@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-jobflow_db}
+      MYSQL_USER: ${DB_USER:-jobflow_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+    volumes:
+      - db_data:/var/lib/mysql
+    # Host port changed to avoid conflicts with local MySQL server
+    ports:
+      - "3307:3306"
+
+  web:
+    build: .
+    command: gunicorn config.wsgi:application --workers 3 --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      # In production nginx will listen on 80/443; keep this for local debugging if needed
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # 443 kept for future TLS; currently nginx runs HTTP only in config
+      - "443:443"
+    depends_on:
+      - web
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+      - certs:/etc/letsencrypt
+      - webroot:/var/www/certbot
+
+  # certbot service left in the file for future use, but disabled until a domain is configured.
+
+volumes:
+  db_data:
+  static_volume:
+  media_volume:
+  certs:
+  webroot:
