@@ -2,10 +2,18 @@ import re
 
 from django.db.models import Q
 from rest_framework import generics, permissions
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from .models import Job
 from .serializers import JobSerializer
 from drf_spectacular.utils import extend_schema
+
+
+class IsOwnerOrReadOnly(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+        return obj.user == request.user or request.user.is_staff
 
 @extend_schema(
     summary="İş listesi",
@@ -83,7 +91,7 @@ class JobListCreateView(generics.ListCreateAPIView):
 )
 class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = JobSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_queryset(self):
         return Job.objects.all()

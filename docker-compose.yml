@@ -1,17 +1,21 @@
 services:
   db:
-    image: mysql:8.0
+    image: mysql:8.4
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${DB_NAME:-jobflow_db}
       MYSQL_USER: ${DB_USER:-jobflow_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
     volumes:
       - db_data:/var/lib/mysql
-    # Host port changed to avoid conflicts with local MySQL server
     ports:
       - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   web:
     build: .
@@ -21,34 +25,35 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     ports:
-      # In production nginx will listen on 80/443; keep this for local debugging if needed
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_production
+      APP_ENV: production
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-False}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-jobflow_db}
+      DB_USER: ${DB_USER:-jobflow_user}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   nginx:
     image: nginx:stable-alpine
     restart: unless-stopped
     ports:
       - "80:80"
-      # 443 kept for future TLS; currently nginx runs HTTP only in config
-      - "443:443"
     depends_on:
       - web
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - static_volume:/app/staticfiles:ro
       - media_volume:/app/media:ro
-      - certs:/etc/letsencrypt
-      - webroot:/var/www/certbot
-
-  # certbot service left in the file for future use, but disabled until a domain is configured.
 
 volumes:
   db_data:
   static_volume:
   media_volume:
-  certs:
-  webroot:

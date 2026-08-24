@@ -1,4 +1,4 @@
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -23,7 +23,7 @@ RUN pip install --upgrade pip setuptools wheel \
  && (for i in 1 2 3; do pip wheel --wheel-dir=/wheels -r requirements.txt && break || echo "pip wheel failed, retrying ($i)" && sleep 10; done)
 
 
-FROM python:3.11-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -34,6 +34,7 @@ WORKDIR /app
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     netcat-openbsd \
+    gosu \
  && rm -rf /var/lib/apt/lists/*
 
 # Install from prebuilt wheels to avoid compiling in final image
@@ -48,11 +49,13 @@ COPY . /app
 # Ensure entrypoint is executable
 RUN chmod +x /app/entrypoint.sh || true
 
-# Create a non-root user and run as that user
+# Create the application user. The entrypoint drops privileges after preparing mounted volumes.
 RUN adduser --disabled-password --gecos "" webuser || true
-USER webuser
 
-ENV PORT 8000
+ENV PORT=8000 \
+    DJANGO_SETTINGS_MODULE=config.settings_production \
+    APP_ENV=production \
+    ENABLE_SWAGGER=False
 
 EXPOSE 8000
 

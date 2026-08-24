@@ -2,6 +2,22 @@
 
 ## 1. Production database migration plan
 
+Before starting the stack, provide these values in the deployment environment or
+in the untracked `.env` file. Docker Compose intentionally fails when either
+database password is missing:
+
+```dotenv
+SECRET_KEY=<strong-random-production-secret>
+DB_PASSWORD=<application-database-password>
+MYSQL_ROOT_PASSWORD=<root-database-password>
+ALLOWED_HOSTS=<production-hostname>
+CSRF_TRUSTED_ORIGINS=https://<production-hostname>
+CORS_ALLOWED_ORIGINS=https://<frontend-hostname>
+```
+
+Do not commit `.env` or replace these values with the placeholders from
+`.env.example`.
+
 ### Backup
 
 ```bash

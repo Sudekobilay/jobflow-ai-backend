@@ -1,3 +1,5 @@
+import os
+
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic.base import RedirectView
@@ -11,6 +13,10 @@ urlpatterns = [
     path("api/", include("apps.applications.urls")),
     path("api/jobs/", include("apps.jobs.urls")),
     path("api/ai/", include("apps.ai_services.urls")),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 ]
+
+if os.getenv("ENABLE_SWAGGER", "True").lower() == "true":
+    urlpatterns += [
+        path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+        path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    ]

@@ -85,6 +85,25 @@ class JobEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(self.user.jobs_created.filter(pk=job.pk).exists())
 
+    def test_other_user_cannot_update_job(self):
+        other_user = User.objects.create_user(email="other@example.com", password="StrongPass123")
+        job = self.user.jobs_created.create(
+            title="Owned Job",
+            company="Original Company",
+            location="Istanbul",
+            description="Original description.",
+            salary="15000",
+            is_remote=False,
+        )
+
+        self.client.force_authenticate(user=other_user)
+        url = reverse("job-detail", kwargs={"pk": job.pk})
+        response = self.client.patch(url, {"title": "Hacked Title"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        job.refresh_from_db()
+        self.assertEqual(job.title, "Owned Job")
+
     def test_list_jobs_filter_success(self):
         self.user.jobs_created.create(
             title="Python Backend Developer",

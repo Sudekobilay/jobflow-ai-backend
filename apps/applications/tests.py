@@ -70,27 +70,44 @@ class CVEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(self.user.cvs.filter(pk=cv.pk).exists())
 
-def test_create_application_success(self):
-    cv = self.user.cvs.create(
-        title="Backend Developer",
-        summary="Python Django backend engineer",
-        skills=["Python", "Django"]
-    )
-    job = self.user.jobs_created.create(
-        title="Django Engineer",
-        company="Test Company",
-        location="Istanbul",
-        description="Backend dev role.",
-        salary="18000",
-        is_remote=True,
-    )
 
-    url = reverse("job-application-list-create")
-    payload = {
-        "job": job.pk,
-        "cv": cv.pk,
-        "cover_letter": "I am very interested in this role."
-    }
+class JobApplicationEndpointTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="application@example.com", password="StrongPass123")
+        self.client.force_authenticate(user=self.user)
+        self.cv = self.user.cvs.create(
+            title="Backend Developer",
+            summary="Python Django backend engineer",
+            skills=["Python", "Django"],
+        )
+        self.job = self.user.jobs_created.create(
+            title="Django Engineer",
+            company="Test Company",
+            location="Istanbul",
+            description="Backend dev role.",
+            salary="18000",
+            is_remote=True,
+        )
 
-    response = self.client.post(url, payload, format="json")
-    self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    def test_create_application_success(self):
+        url = reverse("job-application-list-create")
+        payload = {
+            "job": self.job.pk,
+            "cv": self.cv.pk,
+            "cover_letter": "I am very interested in this role.",
+        }
+
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["job"], self.job.pk)
+        self.assertEqual(response.data["user"], self.user.pk)
+
+    def test_list_applications_is_user_scoped(self):
+        application = self.user.job_applications.create(job=self.job, cv=self.cv)
+
+        response = self.client.get(reverse("job-application-list-create"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], application.pk)
