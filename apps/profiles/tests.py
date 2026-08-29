@@ -38,3 +38,19 @@ class ProfileUpdateTests(APITestCase):
         self.assertEqual(self.user.profile.first_name, "Ahmet")
         self.assertEqual(self.user.profile.university, "Istanbul Technical University")
         self.assertEqual(self.user.profile.experience_years, 2)
+
+    def test_manage_profile_relations(self):
+        skill_response = self.client.post(reverse("profile-skills"), {"name": "Django"}, format="json")
+        language_response = self.client.post(reverse("profile-languages"), {"name": "English"}, format="json")
+        certificate_response = self.client.post(
+            reverse("profile-certificates"),
+            {"name": "AWS Cloud Practitioner", "issuer": "AWS"},
+            format="json",
+        )
+
+        self.assertEqual(skill_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(language_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(certificate_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(self.client.get(reverse("profile-skills")).data), 1)
+        self.assertEqual(len(self.client.get(reverse("profile-languages")).data), 1)
+        self.assertEqual(len(self.client.get(reverse("profile-certificates")).data), 1)

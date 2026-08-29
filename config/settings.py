@@ -18,7 +18,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("R8pIVkIuxGU-cPCD9G74--hXZXJVFFj4BC4v3Sjn0yCIVMKYRrK6sudDIfkibfZvP9URmdubfdO5nuWzkhaEEQ", "dev-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     "apps.ai_services",
     "apps.applications",
     "apps.analytics",
+    "apps.notifications",
+    "apps.email_automation",
 ]
 
 MIDDLEWARE = [
@@ -66,6 +68,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.ai_services.middleware.AIUsageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -161,7 +164,23 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.OptionalPageNumberPagination",
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "user": os.getenv("API_USER_RATE", "1000/day"),
+        "ai": os.getenv("AI_RATE_LIMIT", "30/hour"),
+        "email": os.getenv("EMAIL_RATE_LIMIT", "20/hour"),
+    },
 }
+
+EMAIL_DAILY_LIMIT = int(os.getenv("EMAIL_DAILY_LIMIT", "20"))
+EMAIL_MAX_RETRIES = int(os.getenv("EMAIL_MAX_RETRIES", "3"))
+GMAIL_CLIENT_ID = os.getenv("GMAIL_CLIENT_ID", "")
+GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET", "")
+GMAIL_REDIRECT_URI = os.getenv("GMAIL_REDIRECT_URI", "http://localhost:8000/api/emails/gmail/callback/")
+GMAIL_TOKEN_ENCRYPTION_KEY = os.getenv("GMAIL_TOKEN_ENCRYPTION_KEY", "")
 
 # SimpleJWT Ayarları
 SIMPLE_JWT = {
@@ -200,8 +219,27 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False") == "True"
 
-# OpenAI Ayarları
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+# AI provider settings (Groq exposes an OpenAI-compatible API)
+AI_API_KEY = os.getenv("GROQ_API_KEY", os.getenv("OPENAI_API_KEY", ""))
+AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.groq.com/openai/v1")
+AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-20b")
+AI_COST_PER_MILLION_TOKENS = os.getenv("AI_COST_PER_MILLION_TOKENS", "0")
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "sync-jobs-every-30-minutes": {
+        "task": "apps.jobs.tasks.sync_jobs_task",
+        "schedule": 1800.0,
+        "kwargs": {"source": "all", "limit": 100},
+    },
+    "expire-jobs-every-hour": {"task": "apps.jobs.tasks.expire_jobs_task", "schedule": 3600.0},
+    "interview-reminders-every-15-minutes": {"task": "apps.applications.tasks.create_interview_reminders_task", "schedule": 900.0},
+    "application-reminders-every-15-minutes": {"task": "apps.applications.tasks.create_application_reminders_task", "schedule": 900.0},
+    "retry-failed-emails-every-15-minutes": {"task": "apps.email_automation.tasks.retry_failed_emails_task", "schedule": 900.0},
+}
 
 # Sentry Ayarları
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
@@ -214,3 +252,19 @@ if SENTRY_DSN:
     )
 
 AUTH_USER_MODEL = "authentication.User"
+
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "noreply@jobflow.local",
+)
+
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")

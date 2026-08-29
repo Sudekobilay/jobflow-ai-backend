@@ -45,3 +45,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "languages",
         )
         read_only_fields = ("id", "user", "skills", "certificates", "languages")
+
+
+class ProfileRelationSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200)
+
+
+class CertificateRelationSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200)
+    issuer = serializers.CharField(max_length=200, required=False, allow_blank=True)

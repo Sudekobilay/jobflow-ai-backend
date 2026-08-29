@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from django.utils import timezone
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -145,3 +147,33 @@ class JobEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "Python Backend Developer")
+
+    def test_list_jobs_can_be_ranked_by_match_score(self):
+        cv = self.user.cvs.create(title="Python CV", summary="Python", skills=["Python"])
+        lower = self.user.jobs_created.create(
+            title="Python Job", company="Alpha", description="Python Django", is_active=True
+        )
+        higher = self.user.jobs_created.create(
+            title="Python Docker Job", company="Beta", description="Python Django Docker", is_active=True
+        )
+        from apps.ai_services.models import JobMatch
+
+        JobMatch.objects.create(user=self.user, cv=cv, job=lower, match_score=50)
+        JobMatch.objects.create(user=self.user, cv=cv, job=higher, match_score=90)
+
+        response = self.client.get(reverse("job-list-create"), {"match_cv_id": cv.pk})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["id"], higher.pk)
+        self.assertEqual(response.data[0]["match_score"], 90)
+
+    def test_expired_jobs_are_hidden(self):
+        expired = self.user.jobs_created.create(
+            title="Expired", company="Old", description="No longer available",
+            expires_at=timezone.now() - timedelta(days=1), is_active=False,
+        )
+
+        response = self.client.get(reverse("job-list-create"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn(expired.pk, [item["id"] for item in response.data])

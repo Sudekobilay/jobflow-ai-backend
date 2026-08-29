@@ -1,4 +1,10 @@
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
   db:
     image: mysql:8.4
     restart: unless-stopped
@@ -40,6 +46,51 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build: .
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_production
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-jobflow_db}
+      DB_USER: ${DB_USER:-jobflow_user}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  beat:
+    build: .
+    command: celery -A config beat --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_production
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-jobflow_db}
+      DB_USER: ${DB_USER:-jobflow_user}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_started
 
   nginx:
     image: nginx:stable-alpine
@@ -55,5 +106,6 @@ services:
 
 volumes:
   db_data:
+  redis_data:
   static_volume:
   media_volume:

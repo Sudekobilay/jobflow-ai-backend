@@ -3,6 +3,10 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from django.contrib.admin.sites import site
+from .cv_parser import extract_cv_data
+from .models import CVVersion
+
 User = get_user_model()
 
 
@@ -70,6 +74,25 @@ class CVEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(self.user.cvs.filter(pk=cv.pk).exists())
 
+    def test_cv_parser_extracts_structured_fields(self):
+        parsed = extract_cv_data(
+            "Ada Lovelace\nada@example.com\n+90 555 123 4567\nhttps://github.com/ada\n"
+            "Education\nExperience\nPython Django Docker"
+        )
+
+        self.assertEqual(parsed["email"], "ada@example.com")
+        self.assertEqual(parsed["github_url"], "https://github.com/ada")
+        self.assertIn("python", parsed["skills"])
+        self.assertTrue(parsed["education"])
+
+    def test_cv_update_creates_version_snapshot(self):
+        cv = self.user.cvs.create(title="Version one", summary="Initial", skills=["Python"])
+
+        response = self.client.patch(reverse("cv-detail", kwargs={"pk": cv.pk}), {"summary": "Updated"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(CVVersion.objects.get(cv=cv).summary, "Initial")
+
 
 class JobApplicationEndpointTests(APITestCase):
     def setUp(self):
@@ -111,3 +134,22 @@ class JobApplicationEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], application.pk)
+
+    def test_application_status_change_creates_history(self):
+        create_response = self.client.post(
+            reverse("job-application-list-create"),
+            {"job": self.job.pk, "cv": self.cv.pk},
+            format="json",
+        )
+        application_id = create_response.data["id"]
+
+        response = self.client.patch(
+            reverse("job-application-detail", kwargs={"pk": application_id}),
+            {"status": "interview"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "interview")
+        self.assertEqual(len(response.data["status_history"]), 2)
+        self.assertEqual(response.data["status_history"][0]["to_status"], "interview")

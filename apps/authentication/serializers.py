@@ -34,3 +34,13 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "email", "first_name", "last_name", "phone")
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    id_token = serializers.CharField(required=False, allow_blank=False)
+    access_token = serializers.CharField(required=False, allow_blank=False)
+
+    def validate(self, attrs):
+        if not attrs.get("id_token") and not attrs.get("access_token"):
+            raise serializers.ValidationError("id_token veya access_token zorunludur.")
+        return attrs
