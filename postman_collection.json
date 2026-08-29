@@ -1,0 +1,178 @@
+{
+  "info": {
+    "name": "JobFlow AI Backend Smoke Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Authentication, profile, jobs, AI and applications smoke tests for JobFlow AI backend."
+  },
+  "item": [
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"qa@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"first_name\": \"QA\",\n  \"last_name\": \"Tester\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/auth/register/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"qa@example.com\",\n  \"password\": \"StrongPass123!\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/auth/login/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "Profile - Me",
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+        "url": {
+          "raw": "http://localhost:8000/api/profiles/me/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "profiles", "me"]
+        }
+      }
+    },
+    {
+      "name": "Jobs - List",
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+        "url": {
+          "raw": "http://localhost:8000/api/jobs/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "jobs"]
+        }
+      }
+    },
+    {
+      "name": "Jobs - Create",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Python Backend Engineer\",\n  \"company\": \"Acme Labs\",\n  \"location\": \"Istanbul\",\n  \"description\": \"Django, APIs, background jobs, and cloud deployment.\",\n  \"salary\": \"120000\",\n  \"is_remote\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/jobs/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "jobs"]
+        }
+      }
+    },
+    {
+      "name": "Applications - CV List",
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+        "url": {
+          "raw": "http://localhost:8000/api/applications/cv/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "applications", "cv"]
+        }
+      }
+    },
+    {
+      "name": "Applications - CV Create",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Senior Python Engineer\",\n  \"summary\": \"Python and Django developer with API and cloud experience.\",\n  \"skills\": [\"Python\", \"Django\", \"REST API\", \"Docker\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/applications/cv/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "applications", "cv"]
+        }
+      }
+    },
+    {
+      "name": "Applications - Create Job Application",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"job\": 1,\n  \"cv\": 1,\n  \"status\": \"applied\",\n  \"cover_letter\": \"I am excited to apply for this role.\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/applications/applications/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "applications", "applications"]
+        }
+      }
+    },
+    {
+      "name": "AI - Summary",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Senior Python engineer with Django, REST APIs, Docker, and cloud deployment experience.\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/ai/summary/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "ai", "summary"]
+        }
+      }
+    },
+    {
+      "name": "AI - Match",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cv_text\": \"Python, Django, REST APIs, SQL, Docker, cloud deployment\",\n  \"job_description\": \"We are looking for a Python backend engineer with Django, REST APIs, Docker, SQL, and deployment experience.\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/ai/match/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "ai", "match"]
+        }
+      }
+    }
+  ],
+  "variable": [{"key": "token", "value": ""}]
+}
